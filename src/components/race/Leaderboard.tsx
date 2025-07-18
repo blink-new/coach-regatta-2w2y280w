@@ -1,8 +1,7 @@
-import { Trophy, TrendingUp, Clock, Zap } from 'lucide-react'
+import { Trophy, TrendingUp, Clock, Zap, Flag, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Badge } from '../ui/badge'
 import { Race, PerformanceMetrics } from '../../types/race'
-import { formatDistanceToNow } from 'date-fns'
 
 interface LeaderboardProps {
   race: Race
@@ -26,7 +25,8 @@ export function Leaderboard({ race, onBoatSelect, selectedBoats }: LeaderboardPr
     const speeds = boat.positions.map((pos: any) => pos.speed)
     const averageSpeed = speeds.reduce((a: number, b: number) => a + b, 0) / speeds.length
     const maxSpeed = Math.max(...speeds)
-    const timeElapsed = boat.currentPosition ? boat.currentPosition.timestamp - race.startTime : 0
+    const timeElapsed = boat.finishTime ? boat.finishTime - race.startTime : 
+                      (boat.currentPosition ? boat.currentPosition.timestamp - race.startTime : 0)
 
     return {
       boatId: boat.id,
@@ -35,6 +35,7 @@ export function Leaderboard({ race, onBoatSelect, selectedBoats }: LeaderboardPr
       maxSpeed,
       currentPosition: 0, // Will be set based on sorting
       timeElapsed,
+      totalTime: boat.finishTime ? boat.finishTime - race.startTime : undefined
     }
   }
 
@@ -43,15 +44,30 @@ export function Leaderboard({ race, onBoatSelect, selectedBoats }: LeaderboardPr
     metrics: calculateMetrics(boat)
   }))
 
-  // Sort by total distance (leader has traveled furthest)
-  const sortedBoats = boatsWithMetrics.sort((a, b) => b.metrics.totalDistance - a.metrics.totalDistance)
+  // Sort by finish time for completed races, or by distance for active races
+  const sortedBoats = race.status === 'finished' 
+    ? boatsWithMetrics.sort((a, b) => {
+        // Finished boats first, then by finish time
+        if (a.finishTime && b.finishTime) {
+          return a.finishTime - b.finishTime
+        }
+        if (a.finishTime && !b.finishTime) return -1
+        if (!a.finishTime && b.finishTime) return 1
+        // Both didn't finish, sort by distance
+        return b.metrics.totalDistance - a.metrics.totalDistance
+      })
+    : boatsWithMetrics.sort((a, b) => b.metrics.totalDistance - a.metrics.totalDistance)
   
   // Update positions
   sortedBoats.forEach((boat, index) => {
     boat.metrics.currentPosition = index + 1
   })
 
-  const getPositionIcon = (position: number) => {
+  const getPositionIcon = (position: number, boat: any) => {
+    if (boat.retired || boat.dnf) {
+      return <AlertTriangle className="h-5 w-5 text-red-500" />
+    }
+    
     switch (position) {
       case 1: return <Trophy className="h-5 w-5 text-yellow-500" />
       case 2: return <Trophy className="h-5 w-5 text-gray-400" />
@@ -60,12 +76,25 @@ export function Leaderboard({ race, onBoatSelect, selectedBoats }: LeaderboardPr
     }
   }
 
+  const formatTime = (milliseconds: number) => {
+    const hours = Math.floor(milliseconds / (1000 * 60 * 60))
+    const minutes = Math.floor((milliseconds % (1000 * 60 * 60)) / (1000 * 60))
+    return `${hours}h ${minutes}m`
+  }
+
+  const getStatusBadge = (boat: any) => {
+    if (boat.retired) return <Badge variant="destructive" className="text-xs">Retired</Badge>
+    if (boat.dnf) return <Badge variant="destructive" className="text-xs">DNF</Badge>
+    if (boat.finishTime) return <Badge variant="default" className="text-xs">Finished</Badge>
+    return <Badge variant="secondary" className="text-xs">Racing</Badge>
+  }
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <Trophy className="h-5 w-5" />
-          <span>Live Leaderboard</span>
+          <span>{race.status === 'finished' ? 'Final Results' : 'Live Leaderboard'}</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -81,10 +110,13 @@ export function Leaderboard({ race, onBoatSelect, selectedBoats }: LeaderboardPr
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center space-x-3">
-                {getPositionIcon(boat.metrics.currentPosition)}
+                {getPositionIcon(boat.metrics.currentPosition, boat)}
                 <div>
                   <h3 className="font-semibold text-gray-900">{boat.name}</h3>
                   <p className="text-sm text-gray-600">{boat.sailNumber} • {boat.class}</p>
+                  {boat.skipper && (
+                    <p className="text-xs text-gray-500">Skipper: {boat.skipper}</p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center space-x-2">
@@ -92,22 +124,28 @@ export function Leaderboard({ race, onBoatSelect, selectedBoats }: LeaderboardPr
                   className="w-4 h-4 rounded-full border-2 border-white shadow-sm"
                   style={{ backgroundColor: boat.color }}
                 />
-                {boat.metrics.currentPosition <= 3 && (
-                  <Badge variant="secondary" className="text-xs">
-                    {boat.metrics.currentPosition === 1 ? 'Leader' : `P${boat.metrics.currentPosition}`}
-                  </Badge>
-                )}
+                {getStatusBadge(boat)}
               </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div className="flex items-center space-x-2">
-                <TrendingUp className="h-4 w-4 text-blue-500" />
-                <div>
-                  <p className="text-gray-600">Distance</p>
-                  <p className="font-semibold">{boat.metrics.totalDistance.toFixed(1)} km</p>
+              {race.status === 'finished' && boat.finishTime ? (
+                <div className="flex items-center space-x-2">
+                  <Flag className="h-4 w-4 text-green-500" />
+                  <div>
+                    <p className="text-gray-600">Finish Time</p>
+                    <p className="font-semibold">{formatTime(boat.metrics.totalTime!)}</p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <TrendingUp className="h-4 w-4 text-blue-500" />
+                  <div>
+                    <p className="text-gray-600">Distance</p>
+                    <p className="font-semibold">{boat.metrics.totalDistance.toFixed(1)} km</p>
+                  </div>
+                </div>
+              )}
               
               <div className="flex items-center space-x-2">
                 <Zap className="h-4 w-4 text-green-500" />
@@ -128,20 +166,29 @@ export function Leaderboard({ race, onBoatSelect, selectedBoats }: LeaderboardPr
               <div className="flex items-center space-x-2">
                 <Clock className="h-4 w-4 text-purple-500" />
                 <div>
-                  <p className="text-gray-600">Elapsed</p>
+                  <p className="text-gray-600">Race Time</p>
                   <p className="font-semibold">
-                    {formatDistanceToNow(race.startTime, { addSuffix: false })}
+                    {formatTime(boat.metrics.timeElapsed)}
                   </p>
                 </div>
               </div>
             </div>
 
-            {boat.currentPosition && (
+            {boat.currentPosition && !boat.finishTime && (
               <div className="mt-3 pt-3 border-t border-gray-100">
                 <p className="text-xs text-gray-500">
                   Current: {boat.currentPosition.speed.toFixed(1)} kts • 
                   Heading {boat.currentPosition.heading.toFixed(0)}° • 
-                  {formatDistanceToNow(boat.currentPosition.timestamp, { addSuffix: true })}
+                  {new Date(boat.currentPosition.timestamp).toLocaleTimeString()}
+                </p>
+              </div>
+            )}
+
+            {boat.finishTime && (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <p className="text-xs text-gray-500">
+                  Finished: {new Date(boat.finishTime).toLocaleString()} • 
+                  Position {boat.metrics.currentPosition}
                 </p>
               </div>
             )}

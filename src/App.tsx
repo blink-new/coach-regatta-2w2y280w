@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react'
 import { Header } from './components/layout/Header'
+import { RaceSelector } from './components/race/RaceSelector'
 import { RaceMap } from './components/race/RaceMap'
 import { Leaderboard } from './components/race/Leaderboard'
 import { SpeedChart } from './components/race/SpeedChart'
 import { RaceStats } from './components/race/RaceStats'
-import { mockRace } from './data/mockRaceData'
+import { HistoricalRace } from './types/race'
 import { blink } from './blink/client'
 import { Toaster } from './components/ui/toaster'
 
 function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [activeView, setActiveView] = useState('dashboard')
+  const [selectedRace, setSelectedRace] = useState<HistoricalRace | null>(null)
+  const [activeView, setActiveView] = useState('overview')
   const [selectedBoats, setSelectedBoats] = useState<string[]>([])
 
   useEffect(() => {
@@ -22,6 +24,12 @@ function App() {
     return unsubscribe
   }, [])
 
+  const handleRaceSelect = (race: HistoricalRace) => {
+    setSelectedRace(race)
+    setSelectedBoats([]) // Reset boat selection when changing races
+    setActiveView('overview') // Reset to overview when selecting new race
+  }
+
   const handleBoatSelect = (boatId: string) => {
     setSelectedBoats(prev => {
       if (prev.includes(boatId)) {
@@ -30,6 +38,12 @@ function App() {
         return [...prev, boatId]
       }
     })
+  }
+
+  const handleBackToRaceSelection = () => {
+    setSelectedRace(null)
+    setSelectedBoats([])
+    setActiveView('overview')
   }
 
   if (loading) {
@@ -60,7 +74,7 @@ function App() {
           <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
             <h2 className="text-xl font-semibold mb-4">Sign in to continue</h2>
             <p className="text-gray-600 mb-6">
-              Access live race tracking, performance analytics, and boat comparison tools.
+              Access historical race analysis, performance metrics, and comparative boat data.
             </p>
             <button
               onClick={() => blink.auth.login()}
@@ -71,51 +85,85 @@ function App() {
           </div>
           
           <div className="text-sm text-gray-500">
-            <p>✓ Real-time race tracking</p>
-            <p>✓ Interactive boat analytics</p>
-            <p>✓ Performance comparisons</p>
+            <p>✓ Historical race data analysis</p>
+            <p>✓ Boat performance comparisons</p>
+            <p>✓ Weather correlation insights</p>
           </div>
         </div>
       </div>
     )
   }
 
+  // Show race selector if no race is selected
+  if (!selectedRace) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header 
+          activeView={activeView} 
+          onViewChange={setActiveView}
+          selectedRace={selectedRace}
+          onBackToRaceSelection={handleBackToRaceSelection}
+        />
+        
+        <main className="container mx-auto px-4 py-6">
+          <RaceSelector 
+            onRaceSelect={handleRaceSelect}
+            selectedRaceId={selectedRace?.id}
+          />
+        </main>
+        
+        <Toaster />
+      </div>
+    )
+  }
+
+  // Convert HistoricalRace to Race format for existing components
+  const raceForComponents = {
+    id: selectedRace.id,
+    name: selectedRace.name,
+    startTime: selectedRace.startTime,
+    endTime: selectedRace.endTime,
+    status: 'finished' as const,
+    boats: selectedRace.boats,
+    course: selectedRace.course
+  }
+
   const renderMainContent = () => {
     switch (activeView) {
-      case 'dashboard':
+      case 'overview':
         return (
           <div className="space-y-6">
-            <RaceStats race={mockRace} />
+            <RaceStats race={raceForComponents} />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
                 <RaceMap 
-                  race={mockRace} 
+                  race={raceForComponents} 
                   selectedBoats={selectedBoats}
                   className="h-96"
                 />
               </div>
               <div>
                 <Leaderboard 
-                  race={mockRace}
+                  race={raceForComponents}
                   onBoatSelect={handleBoatSelect}
                   selectedBoats={selectedBoats}
                 />
               </div>
             </div>
-            <SpeedChart race={mockRace} selectedBoats={selectedBoats} />
+            <SpeedChart race={raceForComponents} selectedBoats={selectedBoats} />
           </div>
         )
       
-      case 'leaderboard':
+      case 'results':
         return (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Leaderboard 
-              race={mockRace}
+              race={raceForComponents}
               onBoatSelect={handleBoatSelect}
               selectedBoats={selectedBoats}
             />
             <div className="space-y-6">
-              <RaceStats race={mockRace} />
+              <RaceStats race={raceForComponents} />
             </div>
           </div>
         )
@@ -124,9 +172,9 @@ function App() {
         return (
           <div className="space-y-6">
             <div className="bg-white rounded-lg p-6 border">
-              <h2 className="text-xl font-semibold mb-4">Boat Comparison</h2>
+              <h2 className="text-xl font-semibold mb-4">Boat Comparison Analysis</h2>
               <p className="text-gray-600 mb-4">
-                Select boats from the leaderboard to compare their performance metrics.
+                Select boats from the results to compare their performance metrics throughout the race.
               </p>
               {selectedBoats.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
@@ -136,30 +184,51 @@ function App() {
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Leaderboard 
-                race={mockRace}
+                race={raceForComponents}
                 onBoatSelect={handleBoatSelect}
                 selectedBoats={selectedBoats}
               />
-              <SpeedChart race={mockRace} selectedBoats={selectedBoats} />
+              <SpeedChart race={raceForComponents} selectedBoats={selectedBoats} />
             </div>
           </div>
         )
       
-      case 'analysis':
+      case 'route':
         return (
           <div className="space-y-6">
+            <div className="bg-white rounded-lg p-6 border">
+              <h2 className="text-xl font-semibold mb-4">Route Analysis</h2>
+              <p className="text-gray-600 mb-4">
+                Analyze boat routes and tactical decisions throughout the race.
+              </p>
+            </div>
             <RaceMap 
-              race={mockRace} 
+              race={raceForComponents} 
               selectedBoats={selectedBoats}
               className="h-96"
             />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <SpeedChart race={mockRace} selectedBoats={selectedBoats} />
+              <SpeedChart race={raceForComponents} selectedBoats={selectedBoats} />
               <Leaderboard 
-                race={mockRace}
+                race={raceForComponents}
                 onBoatSelect={handleBoatSelect}
                 selectedBoats={selectedBoats}
               />
+            </div>
+          </div>
+        )
+      
+      case 'weather':
+        return (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg p-6 border">
+              <h2 className="text-xl font-semibold mb-4">Weather Analysis</h2>
+              <p className="text-gray-600 mb-4">
+                Correlate boat performance with weather conditions during the race.
+              </p>
+              <div className="text-center py-8 text-gray-500">
+                Weather analysis feature coming soon
+              </div>
             </div>
           </div>
         )
@@ -171,7 +240,12 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header activeView={activeView} onViewChange={setActiveView} />
+      <Header 
+        activeView={activeView} 
+        onViewChange={setActiveView}
+        selectedRace={selectedRace}
+        onBackToRaceSelection={handleBackToRaceSelection}
+      />
       
       <main className="container mx-auto px-4 py-6">
         {renderMainContent()}

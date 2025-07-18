@@ -1,186 +1,163 @@
+import { Trophy, Clock, MapPin, Users, Waves, Calendar } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Badge } from '../ui/badge'
-import { Clock, Users, Zap, MapPin, Wind, Thermometer } from 'lucide-react'
 import { Race } from '../../types/race'
-import { formatDistanceToNow, format } from 'date-fns'
 
 interface RaceStatsProps {
   race: Race
 }
 
 export function RaceStats({ race }: RaceStatsProps) {
-  const activeBoats = race.boats.filter(boat => boat.currentPosition)
-  const averageSpeed = activeBoats.reduce((sum, boat) => 
-    sum + (boat.currentPosition?.speed || 0), 0
-  ) / activeBoats.length
+  const formatDuration = (startTime: number, endTime?: number) => {
+    if (!endTime) return 'In Progress'
+    const hours = Math.round((endTime - startTime) / (1000 * 60 * 60))
+    return `${hours} hours`
+  }
 
-  const fastestBoat = activeBoats.reduce((fastest, boat) => 
-    (boat.currentPosition?.speed || 0) > (fastest.currentPosition?.speed || 0) ? boat : fastest
-  , activeBoats[0])
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString('en-AU', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
 
-  const raceDistance = 628 // Sydney to Hobart distance in nautical miles
-  const elapsedTime = Date.now() - race.startTime
-  const elapsedHours = elapsedTime / (1000 * 60 * 60)
+  const getClassStats = () => {
+    const classes = race.boats.reduce((acc, boat) => {
+      acc[boat.class] = (acc[boat.class] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
+    
+    return Object.entries(classes).map(([className, count]) => ({
+      name: className,
+      count
+    }))
+  }
+
+  const getFinishedBoats = () => {
+    return race.boats.filter(boat => boat.finishTime && !boat.retired && !boat.dnf).length
+  }
+
+  const getRetiredBoats = () => {
+    return race.boats.filter(boat => boat.retired || boat.dnf).length
+  }
+
+  const classStats = getClassStats()
+  const finishedBoats = getFinishedBoats()
+  const retiredBoats = getRetiredBoats()
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Race Overview */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center space-x-2">
-            <Clock className="h-4 w-4 text-blue-500" />
-            <span>Race Status</span>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
+            <Trophy className="h-4 w-4 mr-2" />
+            Race Overview
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
+        <CardContent className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">Status</span>
+            <Badge variant={race.status === 'finished' ? 'default' : 'secondary'}>
+              {race.status === 'finished' ? 'Completed' : race.status}
+            </Badge>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">Total Boats</span>
+            <span className="font-semibold">{race.boats.length}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">Finished</span>
+            <span className="font-semibold text-green-600">{finishedBoats}</span>
+          </div>
+          {retiredBoats > 0 && (
             <div className="flex items-center justify-between">
-              <Badge 
-                variant={race.status === 'active' ? 'default' : 'secondary'}
-                className={race.status === 'active' ? 'bg-green-500' : ''}
-              >
-                {race.status.toUpperCase()}
+              <span className="text-sm text-gray-600">Retired/DNF</span>
+              <span className="font-semibold text-red-600">{retiredBoats}</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Timing Information */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
+            <Clock className="h-4 w-4 mr-2" />
+            Race Timing
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div>
+            <span className="text-sm text-gray-600">Start Time</span>
+            <p className="font-semibold text-sm">{formatDate(race.startTime)}</p>
+          </div>
+          {race.endTime && (
+            <div>
+              <span className="text-sm text-gray-600">Duration</span>
+              <p className="font-semibold">{formatDuration(race.startTime, race.endTime)}</p>
+            </div>
+          )}
+          {race.status === 'finished' && race.endTime && (
+            <div>
+              <span className="text-sm text-gray-600">Finished</span>
+              <p className="font-semibold text-sm">{formatDate(race.endTime)}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Course Information */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
+            <MapPin className="h-4 w-4 mr-2" />
+            Course Details
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">Marks</span>
+            <span className="font-semibold">{race.course.marks.length}</span>
+          </div>
+          <div>
+            <span className="text-sm text-gray-600">Key Marks</span>
+            <div className="mt-1 space-y-1">
+              {race.course.marks.slice(0, 2).map((mark) => (
+                <p key={mark.id} className="text-xs text-gray-700">{mark.name}</p>
+              ))}
+              {race.course.marks.length > 2 && (
+                <p className="text-xs text-gray-500">+{race.course.marks.length - 2} more</p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Class Breakdown */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
+            <Users className="h-4 w-4 mr-2" />
+            Class Breakdown
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {classStats.map((classInfo) => (
+            <div key={classInfo.name} className="flex items-center justify-between">
+              <Badge variant="outline" className="text-xs">
+                {classInfo.name}
               </Badge>
+              <span className="font-semibold">{classInfo.count}</span>
             </div>
-            <div>
-              <p className="text-2xl font-bold">{formatDistanceToNow(race.startTime)}</p>
-              <p className="text-sm text-gray-600">elapsed</p>
-            </div>
-            <div className="text-xs text-gray-500">
-              Started: {format(new Date(race.startTime), 'MMM dd, HH:mm')}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center space-x-2">
-            <Users className="h-4 w-4 text-green-500" />
-            <span>Fleet</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div>
-              <p className="text-2xl font-bold">{race.boats.length}</p>
-              <p className="text-sm text-gray-600">boats racing</p>
-            </div>
-            <div className="flex space-x-4 text-xs">
-              <div>
-                <p className="font-semibold">{race.boats.filter(b => b.class === 'IRC').length}</p>
-                <p className="text-gray-600">IRC</p>
-              </div>
-              <div>
-                <p className="font-semibold">{race.boats.filter(b => b.class === 'ORCi').length}</p>
-                <p className="text-gray-600">ORCi</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center space-x-2">
-            <Zap className="h-4 w-4 text-yellow-500" />
-            <span>Speed</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div>
-              <p className="text-2xl font-bold">{averageSpeed.toFixed(1)}</p>
-              <p className="text-sm text-gray-600">avg knots</p>
-            </div>
-            {fastestBoat && (
-              <div className="text-xs">
-                <p className="font-semibold">Fastest: {fastestBoat.name}</p>
-                <p className="text-gray-600">{fastestBoat.currentPosition?.speed.toFixed(1)} kts</p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center space-x-2">
-            <MapPin className="h-4 w-4 text-red-500" />
-            <span>Progress</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div>
-              <p className="text-2xl font-bold">{raceDistance}</p>
-              <p className="text-sm text-gray-600">nautical miles</p>
-            </div>
-            <div className="text-xs">
-              <p className="text-gray-600">Sydney → Hobart</p>
-              <p className="font-semibold">ETA: ~{Math.round(raceDistance / averageSpeed)}h remaining</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Weather conditions card */}
-      <Card className="md:col-span-2">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center space-x-2">
-            <Wind className="h-4 w-4 text-blue-500" />
-            <span>Weather Conditions</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center space-x-3">
-              <Wind className="h-8 w-8 text-blue-500" />
-              <div>
-                <p className="text-lg font-bold">15-20 kts</p>
-                <p className="text-sm text-gray-600">SW Wind</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Thermometer className="h-8 w-8 text-orange-500" />
-              <div>
-                <p className="text-lg font-bold">22°C</p>
-                <p className="text-sm text-gray-600">Air Temp</p>
-              </div>
-            </div>
-          </div>
-          <div className="mt-3 p-2 bg-blue-50 rounded text-xs">
-            <p className="text-blue-800">
-              <strong>Forecast:</strong> Moderate southwesterly winds with occasional gusts to 25 knots. 
-              Sea state 2-3m. Partly cloudy conditions expected.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Race information card */}
-      <Card className="md:col-span-2">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Race Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Race:</span>
-              <span className="font-semibold">{race.name}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Distance:</span>
-              <span className="font-semibold">{raceDistance} nm</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Course:</span>
-              <span className="font-semibold">Sydney Harbour → Hobart</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Record:</span>
-              <span className="font-semibold">1d 2h 8m 58s (2017)</span>
-            </div>
-          </div>
+          ))}
+          {classStats.length === 0 && (
+            <p className="text-sm text-gray-500">No class data available</p>
+          )}
         </CardContent>
       </Card>
     </div>
