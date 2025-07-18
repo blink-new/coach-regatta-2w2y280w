@@ -1,200 +1,197 @@
-import { Trophy, TrendingUp, Clock, Zap, Flag, AlertTriangle } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { Badge } from '../ui/badge'
-import { Race, PerformanceMetrics } from '../../types/race'
+import { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Trophy, Clock, Flag, MapPin, Anchor } from 'lucide-react';
+import type { RaceData, LeaderboardTeam, Team } from '../../types/race';
 
 interface LeaderboardProps {
-  race: Race
-  onBoatSelect: (boatId: string) => void
-  selectedBoats: string[]
+  raceData: RaceData;
+  onBoatSelect?: (boatId: number) => void;
+  selectedBoat?: number;
 }
 
-export function Leaderboard({ race, onBoatSelect, selectedBoats }: LeaderboardProps) {
-  // Calculate performance metrics for each boat
-  const calculateMetrics = (boat: any): PerformanceMetrics => {
-    const totalDistance = boat.positions.reduce((acc: number, pos: any, index: number) => {
-      if (index === 0) return 0
-      const prev = boat.positions[index - 1]
-      const distance = Math.sqrt(
-        Math.pow((pos.lat - prev.lat) * 111000, 2) + 
-        Math.pow((pos.lng - prev.lng) * 111000 * Math.cos(pos.lat * Math.PI / 180), 2)
-      )
-      return acc + distance
-    }, 0)
+export function Leaderboard({ raceData, onBoatSelect, selectedBoat }: LeaderboardProps) {
+  const [selectedClass, setSelectedClass] = useState<number>(0);
 
-    const speeds = boat.positions.map((pos: any) => pos.speed)
-    const averageSpeed = speeds.reduce((a: number, b: number) => a + b, 0) / speeds.length
-    const maxSpeed = Math.max(...speeds)
-    const timeElapsed = boat.finishTime ? boat.finishTime - race.startTime : 
-                      (boat.currentPosition ? boat.currentPosition.timestamp - race.startTime : 0)
+  const getTeamInfo = (teamId: number): Team | undefined => {
+    return raceData.setup.teams.find(team => team.id === teamId);
+  };
 
-    return {
-      boatId: boat.id,
-      totalDistance: totalDistance / 1000, // Convert to km
-      averageSpeed,
-      maxSpeed,
-      currentPosition: 0, // Will be set based on sorting
-      timeElapsed,
-      totalTime: boat.finishTime ? boat.finishTime - race.startTime : undefined
+  const formatTime = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours}h ${minutes}m ${secs}s`;
+  };
+
+  const getStatusBadge = (team: LeaderboardTeam) => {
+    if (team.finished) {
+      return <Badge variant="default" className="bg-green-100 text-green-800">Finished</Badge>;
     }
-  }
-
-  const boatsWithMetrics = race.boats.map(boat => ({
-    ...boat,
-    metrics: calculateMetrics(boat)
-  }))
-
-  // Sort by finish time for completed races, or by distance for active races
-  const sortedBoats = race.status === 'finished' 
-    ? boatsWithMetrics.sort((a, b) => {
-        // Finished boats first, then by finish time
-        if (a.finishTime && b.finishTime) {
-          return a.finishTime - b.finishTime
-        }
-        if (a.finishTime && !b.finishTime) return -1
-        if (!a.finishTime && b.finishTime) return 1
-        // Both didn't finish, sort by distance
-        return b.metrics.totalDistance - a.metrics.totalDistance
-      })
-    : boatsWithMetrics.sort((a, b) => b.metrics.totalDistance - a.metrics.totalDistance)
-  
-  // Update positions
-  sortedBoats.forEach((boat, index) => {
-    boat.metrics.currentPosition = index + 1
-  })
-
-  const getPositionIcon = (position: number, boat: any) => {
-    if (boat.retired || boat.dnf) {
-      return <AlertTriangle className="h-5 w-5 text-red-500" />
+    if (team.started) {
+      return <Badge variant="secondary" className="bg-blue-100 text-blue-800">Racing</Badge>;
     }
-    
-    switch (position) {
-      case 1: return <Trophy className="h-5 w-5 text-yellow-500" />
-      case 2: return <Trophy className="h-5 w-5 text-gray-400" />
-      case 3: return <Trophy className="h-5 w-5 text-amber-600" />
-      default: return <div className="w-5 h-5 flex items-center justify-center text-sm font-semibold text-gray-600">{position}</div>
+    return <Badge variant="outline">Not Started</Badge>;
+  };
+
+  const getRankBadge = (rank: number) => {
+    if (rank === 1) {
+      return <Trophy className="h-4 w-4 text-yellow-500" />;
     }
-  }
+    if (rank === 2) {
+      return <Trophy className="h-4 w-4 text-gray-400" />;
+    }
+    if (rank === 3) {
+      return <Trophy className="h-4 w-4 text-amber-600" />;
+    }
+    return <span className="text-sm font-medium text-gray-600">#{rank}</span>;
+  };
 
-  const formatTime = (milliseconds: number) => {
-    const hours = Math.floor(milliseconds / (1000 * 60 * 60))
-    const minutes = Math.floor((milliseconds % (1000 * 60 * 60)) / (1000 * 60))
-    return `${hours}h ${minutes}m`
-  }
-
-  const getStatusBadge = (boat: any) => {
-    if (boat.retired) return <Badge variant="destructive" className="text-xs">Retired</Badge>
-    if (boat.dnf) return <Badge variant="destructive" className="text-xs">DNF</Badge>
-    if (boat.finishTime) return <Badge variant="default" className="text-xs">Finished</Badge>
-    return <Badge variant="secondary" className="text-xs">Racing</Badge>
-  }
+  const currentTag = raceData.leaderboard.tags[selectedClass];
+  if (!currentTag) return null;
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <Trophy className="h-5 w-5" />
-          <span>{race.status === 'finished' ? 'Final Results' : 'Live Leaderboard'}</span>
+        <CardTitle className="flex items-center gap-2">
+          <Trophy className="h-5 w-5 text-blue-600" />
+          Race Leaderboard
         </CardTitle>
+        <CardDescription>
+          Current standings for {raceData.info.name}
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {sortedBoats.map((boat) => (
-          <div
-            key={boat.id}
-            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-              selectedBoats.includes(boat.id)
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 hover:border-gray-300 bg-white'
-            }`}
-            onClick={() => onBoatSelect(boat.id)}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center space-x-3">
-                {getPositionIcon(boat.metrics.currentPosition, boat)}
-                <div>
-                  <h3 className="font-semibold text-gray-900">{boat.name}</h3>
-                  <p className="text-sm text-gray-600">{boat.sailNumber} • {boat.class}</p>
-                  {boat.skipper && (
-                    <p className="text-xs text-gray-500">Skipper: {boat.skipper}</p>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div 
-                  className="w-4 h-4 rounded-full border-2 border-white shadow-sm"
-                  style={{ backgroundColor: boat.color }}
-                />
-                {getStatusBadge(boat)}
-              </div>
-            </div>
+      <CardContent>
+        <Tabs value={selectedClass.toString()} onValueChange={(value) => setSelectedClass(parseInt(value))}>
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-3">
+            {raceData.leaderboard.tags.map((tag, index) => (
+              <TabsTrigger key={index} value={index.toString()}>
+                {tag.name || `Class ${index + 1}`}
+                <Badge variant="secondary" className="ml-2">
+                  {tag.teams.length}
+                </Badge>
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              {race.status === 'finished' && boat.finishTime ? (
-                <div className="flex items-center space-x-2">
-                  <Flag className="h-4 w-4 text-green-500" />
-                  <div>
-                    <p className="text-gray-600">Finish Time</p>
-                    <p className="font-semibold">{formatTime(boat.metrics.totalTime!)}</p>
+          {raceData.leaderboard.tags.map((tag, tagIndex) => (
+            <TabsContent key={tagIndex} value={tagIndex.toString()}>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">
+                    {tag.name || `Class ${tagIndex + 1}`}
+                  </h3>
+                  <div className="text-sm text-gray-600">
+                    {tag.teams.filter(t => t.finished).length} of {tag.teams.length} finished
                   </div>
                 </div>
-              ) : (
-                <div className="flex items-center space-x-2">
-                  <TrendingUp className="h-4 w-4 text-blue-500" />
-                  <div>
-                    <p className="text-gray-600">Distance</p>
-                    <p className="font-semibold">{boat.metrics.totalDistance.toFixed(1)} km</p>
-                  </div>
-                </div>
-              )}
-              
-              <div className="flex items-center space-x-2">
-                <Zap className="h-4 w-4 text-green-500" />
-                <div>
-                  <p className="text-gray-600">Avg Speed</p>
-                  <p className="font-semibold">{boat.metrics.averageSpeed.toFixed(1)} kts</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Zap className="h-4 w-4 text-red-500" />
-                <div>
-                  <p className="text-gray-600">Max Speed</p>
-                  <p className="font-semibold">{boat.metrics.maxSpeed.toFixed(1)} kts</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Clock className="h-4 w-4 text-purple-500" />
-                <div>
-                  <p className="text-gray-600">Race Time</p>
-                  <p className="font-semibold">
-                    {formatTime(boat.metrics.timeElapsed)}
-                  </p>
-                </div>
-              </div>
-            </div>
 
-            {boat.currentPosition && !boat.finishTime && (
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <p className="text-xs text-gray-500">
-                  Current: {boat.currentPosition.speed.toFixed(1)} kts • 
-                  Heading {boat.currentPosition.heading.toFixed(0)}° • 
-                  {new Date(boat.currentPosition.timestamp).toLocaleTimeString()}
-                </p>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-16">Rank</TableHead>
+                        <TableHead>Boat</TableHead>
+                        <TableHead>Skipper</TableHead>
+                        <TableHead>Country</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Elapsed Time</TableHead>
+                        <TableHead>DTF</TableHead>
+                        <TableHead className="w-20">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {tag.teams
+                        .sort((a, b) => a.rankR - b.rankR)
+                        .map((team) => {
+                          const teamInfo = getTeamInfo(team.id);
+                          const isSelected = selectedBoat === team.id;
+                          
+                          return (
+                            <TableRow 
+                              key={team.id}
+                              className={`cursor-pointer hover:bg-gray-50 ${isSelected ? 'bg-blue-50 border-blue-200' : ''}`}
+                              onClick={() => onBoatSelect?.(team.id)}
+                            >
+                              <TableCell className="font-medium">
+                                <div className="flex items-center gap-2">
+                                  {getRankBadge(team.rankR)}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="space-y-1">
+                                  <div className="font-medium">
+                                    {teamInfo?.name || `Boat ${team.id}`}
+                                  </div>
+                                  {teamInfo?.sail && (
+                                    <div className="text-xs text-gray-500 flex items-center gap-1">
+                                      <Anchor className="h-3 w-3" />
+                                      {teamInfo.sail}
+                                    </div>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="space-y-1">
+                                  <div>{teamInfo?.owner || 'Unknown'}</div>
+                                  {teamInfo?.boat && (
+                                    <div className="text-xs text-gray-500">{teamInfo.boat}</div>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  {teamInfo?.flag && (
+                                    <Flag className="h-4 w-4" />
+                                  )}
+                                  <span>{teamInfo?.country || 'Unknown'}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {getStatusBadge(team)}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-4 w-4 text-gray-400" />
+                                  <span className="font-mono text-sm">
+                                    {team.elapsedFormatted}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  <MapPin className="h-4 w-4 text-gray-400" />
+                                  <span className="font-mono text-sm">
+                                    {team.dtf > 0 ? `+${team.dtf}` : team.dtf}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  variant={isSelected ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onBoatSelect?.(team.id);
+                                  }}
+                                >
+                                  {isSelected ? 'Selected' : 'Select'}
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
-            )}
-
-            {boat.finishTime && (
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <p className="text-xs text-gray-500">
-                  Finished: {new Date(boat.finishTime).toLocaleString()} • 
-                  Position {boat.metrics.currentPosition}
-                </p>
-              </div>
-            )}
-          </div>
-        ))}
+            </TabsContent>
+          ))}
+        </Tabs>
       </CardContent>
     </Card>
-  )
+  );
 }

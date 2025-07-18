@@ -1,106 +1,128 @@
+export interface RaceInfo {
+  id: string;
+  name: string;
+}
+
+export interface Team {
+  id: number;
+  owner: string;
+  country: string;
+  img?: string;
+  flag: string;
+  sail: string;
+  thumb?: string;
+  name: string;
+  class?: string;
+  color?: string;
+  boat?: string;
+  skipper?: string;
+  crew?: string;
+  sponsor?: string;
+  website?: string;
+  twitter?: string;
+  facebook?: string;
+  instagram?: string;
+  youtube?: string;
+}
+
+export interface RaceSetup {
+  zoomLevel: number;
+  tz: string;
+  tab_leaderboard: string;
+  laps: number;
+  lapz: {
+    max: number;
+    laps: boolean;
+  };
+  adverts: Array<{
+    duration: number;
+    x: number;
+    y: number;
+    href: string;
+    url: string;
+  }>;
+  tab_segments: string;
+  useMobileViewer: boolean;
+  heightometer: boolean;
+  fadeFullTracksAfterTime: number;
+  trackWidth: number;
+  debadge: boolean;
+  logo: {
+    x: number;
+    y: number;
+    href: string;
+    url: string;
+  };
+  ignMapKey: string | null;
+  showEstimatedFinish: boolean;
+  flagLate: boolean;
+  showTracksDefault: string;
+  motd: string | null;
+  teams: Team[];
+  course?: {
+    marks: Array<{
+      name: string;
+      lat: number;
+      lon: number;
+      type: string;
+    }>;
+  };
+}
+
+export interface LeaderboardTeam {
+  cElapsed: number;
+  old: boolean;
+  d24: number;
+  started: boolean;
+  finished: boolean;
+  elapsed: number;
+  cElapsedFormatted: string;
+  rankR: number;
+  rankS: number;
+  tcf: string;
+  dtf: number;
+  id: number;
+  finishAt?: number;
+  elapsedFormatted: string;
+  dmg: number;
+  speed?: number;
+  heading?: number;
+  lat?: number;
+  lon?: number;
+  lastReport?: number;
+}
+
+export interface LeaderboardTag {
+  teams: LeaderboardTeam[];
+  name?: string;
+  class?: string;
+}
+
+export interface Leaderboard {
+  tags: LeaderboardTag[];
+}
+
+export interface PositionMoment {
+  dtf: number;
+  lat: number;
+  lon: number;
+  at: number;
+  speed?: number;
+  heading?: number;
+  wind_speed?: number;
+  wind_direction?: number;
+}
+
 export interface BoatPosition {
-  id: string
-  lat: number
-  lng: number
-  timestamp: number
-  speed: number
-  heading: number
+  id: number;
+  moments: PositionMoment[];
 }
 
-export interface Boat {
-  id: string
-  name: string
-  sailNumber: string
-  class: string
-  color: string
-  positions: BoatPosition[]
-  currentPosition?: BoatPosition
-  // Additional metadata for post-race analysis
-  skipper?: string
-  yacht?: string
-  finishTime?: number
-  retired?: boolean
-  dnf?: boolean
-}
+export type AllPositions = BoatPosition[];
 
-export interface Race {
-  id: string
-  name: string
-  startTime: number
-  endTime?: number
-  status: 'upcoming' | 'active' | 'finished'
-  boats: Boat[]
-  course: {
-    start: { lat: number; lng: number }
-    marks: Array<{ id: string; lat: number; lng: number; name: string }>
-    finish: { lat: number; lng: number }
-  }
-  // Additional metadata for historical races
-  description?: string
-  distance?: number
-  location?: string
-  year?: number
-  weather?: WeatherCondition[]
-}
-
-export interface WeatherCondition {
-  timestamp: number
-  windSpeed: number
-  windDirection: number
-  waveHeight?: number
-  temperature?: number
-  pressure?: number
-  location: { lat: number; lng: number }
-}
-
-export interface Sector {
-  id: string
-  name: string
-  startMark: string
-  endMark: string
-  distance: number
-}
-
-export interface PerformanceMetrics {
-  boatId: string
-  totalDistance: number
-  averageSpeed: number
-  maxSpeed: number
-  currentPosition: number
-  timeElapsed: number
-  estimatedFinishTime?: number
-  // Additional metrics for post-race analysis
-  finishPosition?: number
-  totalTime?: number
-  correctedTime?: number
-  vmg?: number // Velocity Made Good
-  tackingEfficiency?: number
-}
-
-export interface RaceAnalysis {
-  raceId: string
-  selectedBoats: string[]
-  selectedClasses: string[]
-  timeRange?: { start: number; end: number }
-  weatherFilter?: boolean
-  sectorAnalysis?: boolean
-}
-
-// Historical race data structure (matches original repository format)
-export interface HistoricalRace {
-  id: string
-  name: string
-  year: number
-  location: string
-  description: string
-  startTime: number
-  endTime: number
-  distance: number
-  boats: Boat[]
-  course: Race['course']
-  weather?: WeatherCondition[]
-  results?: {
-    overall: Array<{ boatId: string; position: number; totalTime: number }>
-    byClass: Record<string, Array<{ boatId: string; position: number; correctedTime: number }>>
-  }
+export interface RaceData {
+  info: RaceInfo;
+  setup: RaceSetup;
+  leaderboard: Leaderboard;
+  positions: AllPositions;
 }
