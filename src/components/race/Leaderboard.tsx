@@ -85,7 +85,7 @@ export function Leaderboard({ raceData, onBoatSelect, selectedBoat }: Leaderboar
                     {tag.name || `Class ${tagIndex + 1}`}
                   </h3>
                   <div className="text-sm text-gray-600">
-                    {tag.teams.filter(t => t.finished).length} of {tag.teams.length} finished
+                    {(tag.teams || []).filter(t => t.finished).length} of {(tag.teams || []).length} finished
                   </div>
                 </div>
 

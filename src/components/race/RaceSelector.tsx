@@ -145,9 +145,9 @@ export function RaceSelector({ selectedRace, onRaceSelect }: RaceSelectorProps) 
             <div className="space-y-2">
               <p className="text-sm font-medium">Race Classes:</p>
               <div className="flex flex-wrap gap-2">
-                {selectedRaceData.leaderboard.tags.map((tag, index) => (
-                  <Badge key={index} variant="secondary">
-                    {tag.name || `Class ${index + 1}`} ({tag.teams.length} boats)
+                {selectedRaceData.leaderboard.tags.map((tag, tagIndex) => (
+                  <Badge key={tagIndex} variant="secondary">
+                    {tag.name || `Class ${tagIndex + 1}`} ({(tag.teams || []).length} boats)
                   </Badge>
                 ))}
               </div>

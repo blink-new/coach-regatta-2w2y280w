@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Header } from './components/layout/Header';
+import { SimpleHeader } from './components/layout/SimpleHeader';
 import { RaceSelector } from './components/race/RaceSelector';
 import { Leaderboard } from './components/race/Leaderboard';
 import { RaceMap } from './components/race/RaceMap';
@@ -43,7 +43,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <SimpleHeader />
       
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* Race Selection */}

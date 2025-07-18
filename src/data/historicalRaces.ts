@@ -22,8 +22,8 @@ const generateHistoricalBoatTrack = (
   const positionInterval = 5 * 60 * 1000 // 5 minutes
   const totalPositions = Math.floor(raceDuration / positionInterval)
   
-  for (let i = 0; i < totalPositions; i++) {
-    const timestamp = raceStartTime + (i * positionInterval)
+  for (let posIndex = 0; posIndex < totalPositions; posIndex++) {
+    const timestamp = raceStartTime + (posIndex * positionInterval)
     const speed = 6 + Math.random() * 16 // 6-22 knots realistic for offshore racing
     
     // Simulate realistic sailing movement with course changes
@@ -34,7 +34,7 @@ const generateHistoricalBoatTrack = (
     lng += Math.sin(heading * Math.PI / 180) * distance
     
     positions.push({
-      id: `${boatId}-${i}`,
+      id: `${boatId}-${posIndex}`,
       lat,
       lng,
       timestamp,
@@ -63,9 +63,9 @@ const generateWeatherData = (raceStartTime: number, raceDuration: number): Weath
   const weatherInterval = 3600000 // 1 hour
   const totalWeatherPoints = Math.floor(raceDuration / weatherInterval)
   
-  for (let i = 0; i < totalWeatherPoints; i++) {
+  for (let weatherIndex = 0; weatherIndex < totalWeatherPoints; weatherIndex++) {
     weather.push({
-      timestamp: raceStartTime + (i * weatherInterval),
+      timestamp: raceStartTime + (weatherIndex * weatherInterval),
       windSpeed: 10 + Math.random() * 20, // 10-30 knots
       windDirection: Math.random() * 360,
       waveHeight: 1 + Math.random() * 3, // 1-4 meters

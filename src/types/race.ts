@@ -126,3 +126,18 @@ export interface RaceData {
   leaderboard: Leaderboard;
   positions: AllPositions;
 }
+
+export interface HistoricalRace {
+  id: string;
+  name: string;
+  year: number;
+  location: string;
+  description: string;
+  startTime: number;
+  endTime: number;
+  distance: number;
+  boats: any[];
+  weather?: any[];
+  results?: any;
+  course?: any;
+}

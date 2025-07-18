@@ -5,7 +5,7 @@ import { Progress } from '../ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Trophy, Clock, Zap, MapPin, Flag, Users, Target } from 'lucide-react';
-import type { RaceData } from '../types/race';
+import type { RaceData } from '../../types/race';
 
 interface RaceStatsProps {
   raceData: RaceData;
@@ -14,8 +14,8 @@ interface RaceStatsProps {
 
 export function RaceStats({ raceData, selectedBoat }: RaceStatsProps) {
   const raceStatistics = useMemo(() => {
-    const totalBoats = raceData.setup.teams.length;
-    const allTeams = raceData.leaderboard.tags.flatMap(tag => tag.teams);
+    const totalBoats = raceData.setup.teams?.length || 0;
+    const allTeams = raceData.leaderboard.tags?.flatMap(tag => tag.teams) || [];
     
     const finishedBoats = allTeams.filter(team => team.finished).length;
     const racingBoats = allTeams.filter(team => team.started && !team.finished).length;
@@ -25,8 +25,8 @@ export function RaceStats({ raceData, selectedBoat }: RaceStatsProps) {
     let minStartTime = Infinity;
     let maxFinishTime = -Infinity;
     
-    raceData.positions.forEach(boat => {
-      if (boat.moments.length > 0) {
+    (raceData.positions || []).forEach(boat => {
+      if (boat.moments?.length > 0) {
         minStartTime = Math.min(minStartTime, boat.moments[0].at);
         maxFinishTime = Math.max(maxFinishTime, boat.moments[boat.moments.length - 1].at);
       }
@@ -35,19 +35,19 @@ export function RaceStats({ raceData, selectedBoat }: RaceStatsProps) {
     const raceDuration = maxFinishTime - minStartTime;
 
     // Calculate average speeds
-    const speedStats = raceData.positions.map(boat => {
+    const speedStats = (raceData.positions || []).map(boat => {
       const teamInfo = raceData.setup.teams.find(t => t.id === boat.id);
       const leaderboardData = allTeams.find(t => t.id === boat.id);
       
-      if (boat.moments.length < 2) return null;
+      if (!boat.moments || boat.moments.length < 2) return null;
 
       // Calculate total distance and time
       let totalDistance = 0;
       let totalTime = 0;
       
-      for (let i = 1; i < boat.moments.length; i++) {
-        const prev = boat.moments[i - 1];
-        const curr = boat.moments[i];
+      for (let index = 1; index < boat.moments.length; index++) {
+        const prev = boat.moments[index - 1];
+        const curr = boat.moments[index];
         
         const distance = calculateDistance(prev.lat, prev.lon, curr.lat, curr.lon);
         const time = (curr.at - prev.at) / 3600; // hours
@@ -290,8 +290,8 @@ export function RaceStats({ raceData, selectedBoat }: RaceStatsProps) {
                         dataKey="value"
                         label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
                       >
-                        {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        {pieData.map((entry, idx) => (
+                          <Cell key={`cell-${idx}`} fill={entry.color} />
                         ))}
                       </Pie>
                       <Tooltip />
@@ -353,12 +353,12 @@ export function RaceStats({ raceData, selectedBoat }: RaceStatsProps) {
 
         <TabsContent value="classes" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {raceData.leaderboard.tags.map((tag, index) => (
-              <Card key={index}>
+            {raceData.leaderboard.tags.map((tag, tagIndex) => (
+              <Card key={tagIndex}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Trophy className="h-5 w-5 text-blue-600" />
-                    {tag.name || `Class ${index + 1}`}
+                    {tag.name || `Class ${tagIndex + 1}`}
                   </CardTitle>
                   <CardDescription>
                     Class statistics and performance

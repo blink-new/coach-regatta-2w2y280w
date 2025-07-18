@@ -102,9 +102,9 @@ export function RaceMap({ raceData, selectedBoat, onBoatSelect }: RaceMapProps) 
     // Draw grid
     ctx.strokeStyle = '#e2e8f0';
     ctx.lineWidth = 1;
-    for (let i = 0; i <= 10; i++) {
-      const x = (rect.width / 10) * i;
-      const y = (rect.height / 10) * i;
+    for (let gridIndex = 0; gridIndex <= 10; gridIndex++) {
+      const x = (rect.width / 10) * gridIndex;
+      const y = (rect.height / 10) * gridIndex;
       
       ctx.beginPath();
       ctx.moveTo(x, 0);

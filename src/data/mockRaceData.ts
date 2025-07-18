@@ -10,8 +10,8 @@ const generateBoatTrack = (boatId: string, startLat: number, startLng: number, c
   let heading = Math.random() * 360
   
   // Generate 60 positions (1 per minute for the last hour)
-  for (let i = 0; i < 60; i++) {
-    const timestamp = startTime + (i * 60000)
+  for (let posIndex = 0; posIndex < 60; posIndex++) {
+    const timestamp = startTime + (posIndex * 60000)
     const speed = 8 + Math.random() * 12 // 8-20 knots
     
     // Simulate realistic sailing movement
@@ -22,7 +22,7 @@ const generateBoatTrack = (boatId: string, startLat: number, startLng: number, c
     lng += Math.sin(heading * Math.PI / 180) * distance
     
     positions.push({
-      id: `${boatId}-${i}`,
+      id: `${boatId}-${posIndex}`,
       lat,
       lng,
       timestamp,
