@@ -116,7 +116,7 @@ export function RaceSelector({ selectedRace, onRaceSelect }: RaceSelectorProps) 
                 <div>
                   <p className="text-sm font-medium">Participants</p>
                   <p className="text-2xl font-bold text-blue-600">
-                    {selectedRaceData.setup.teams.length}
+                    {selectedRaceData.setup.teams?.length || 0}
                   </p>
                 </div>
               </div>
@@ -126,7 +126,7 @@ export function RaceSelector({ selectedRace, onRaceSelect }: RaceSelectorProps) 
                 <div>
                   <p className="text-sm font-medium">Classes</p>
                   <p className="text-2xl font-bold text-blue-600">
-                    {selectedRaceData.leaderboard.tags.length}
+                    {selectedRaceData.leaderboard.tags?.length || 0}
                   </p>
                 </div>
               </div>
@@ -145,7 +145,7 @@ export function RaceSelector({ selectedRace, onRaceSelect }: RaceSelectorProps) 
             <div className="space-y-2">
               <p className="text-sm font-medium">Race Classes:</p>
               <div className="flex flex-wrap gap-2">
-                {selectedRaceData.leaderboard.tags.map((tag, tagIndex) => (
+                {(selectedRaceData.leaderboard.tags || []).map((tag, tagIndex) => (
                   <Badge key={tagIndex} variant="secondary">
                     {tag.name || `Class ${tagIndex + 1}`} ({(tag.teams || []).length} boats)
                   </Badge>

@@ -77,7 +77,7 @@ export function RaceStats({ raceData, selectedBoat }: RaceStatsProps) {
       notStartedBoats,
       raceDuration,
       speedStats,
-      completionRate: (finishedBoats / totalBoats) * 100
+      completionRate: totalBoats > 0 ? (finishedBoats / totalBoats) * 100 : 0
     };
   }, [raceData]);
 
