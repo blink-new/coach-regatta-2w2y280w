@@ -67,7 +67,7 @@ export function Leaderboard({ raceData, onBoatSelect, selectedBoat }: Leaderboar
       <CardContent>
         <Tabs value={selectedClass.toString()} onValueChange={(value) => setSelectedClass(parseInt(value))}>
           <TabsList className="grid w-full grid-cols-2 lg:grid-cols-3">
-            {raceData.leaderboard.tags.map((tag, index) => (
+            {(raceData.leaderboard.tags || []).map((tag, index) => (
               <TabsTrigger key={index} value={index.toString()}>
                 {tag.name || `Class ${index + 1}`}
                 <Badge variant="secondary" className="ml-2">
@@ -77,7 +77,7 @@ export function Leaderboard({ raceData, onBoatSelect, selectedBoat }: Leaderboar
             ))}
           </TabsList>
 
-          {raceData.leaderboard.tags.map((tag, tagIndex) => (
+          {(raceData.leaderboard.tags || []).map((tag, tagIndex) => (
             <TabsContent key={tagIndex} value={tagIndex.toString()}>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">

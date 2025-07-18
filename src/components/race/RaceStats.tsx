@@ -15,7 +15,7 @@ interface RaceStatsProps {
 export function RaceStats({ raceData, selectedBoat }: RaceStatsProps) {
   const raceStatistics = useMemo(() => {
     const totalBoats = raceData.setup.teams?.length || 0;
-    const allTeams = raceData.leaderboard.tags?.flatMap(tag => tag.teams) || [];
+    const allTeams = (raceData.leaderboard.tags || []).flatMap(tag => tag.teams || []);
     
     const finishedBoats = allTeams.filter(team => team.finished).length;
     const racingBoats = allTeams.filter(team => team.started && !team.finished).length;

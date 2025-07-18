@@ -157,7 +157,7 @@ export function RaceSelector({ selectedRace, onRaceSelect }: RaceSelectorProps) 
               <p className="text-sm font-medium">Finished Boats:</p>
               <div className="text-sm text-gray-600">
                 {selectedRaceData.leaderboard.tags.reduce((total, tag) => 
-                  total + tag.teams.filter(team => team.finished).length, 0
+                  total + (tag.teams || []).filter(team => team.finished).length, 0
                 )} of {selectedRaceData.setup.teams.length} boats have finished
               </div>
             </div>
